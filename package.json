@@ -4,12 +4,15 @@
   "description": "A small music sharing app built with Express, MongoDB, and ImageKit",
   "main": "index.js",
   "scripts": {
-    "start": "node src/server.js",
+    "start": "node src/local-server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
+  "engines": {
+    "node": ">=20"
+  },
   "dependencies": {
     "@imagekit/nodejs": "^7.11.0",
     "bcrypt": "^6.0.0",

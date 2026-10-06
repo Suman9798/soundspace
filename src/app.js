@@ -1,6 +1,7 @@
 const express = require('express')
 const cookieParser = require('cookie-parser')
 const path = require('path')
+const connectDB = require("./db/db")
 
 const authRoutes = require("./routes/auth.routes")
 const musicRoutes = require("./routes/music.routes")
@@ -9,11 +10,27 @@ const app = express();
 app.use(express.json({ limit: "1mb" }));
 app.use(cookieParser());
 
+// Vercel starts the Express app without running src/server.js, so connect when
+// an API request arrives. The cached connection is reused across warm requests.
+app.use("/api", async (req, res, next) => {
+    try {
+        await connectDB();
+        return next();
+    } catch (error) {
+        console.error("Database connection failed:", error.message);
+        return res.status(503).json({ message: "The database is temporarily unavailable" });
+    }
+});
 
 app.use("/api/auth",authRoutes);
 
 app.use("/api/music",musicRoutes);
-app.use(express.static(path.join(__dirname, "../public")));
+
+// Vercel serves files from public/ through its CDN. Keep Express static serving
+// for local development only.
+if (!process.env.VERCEL) {
+    app.use(express.static(path.join(__dirname, "../public")));
+}
 
 app.use((req, res) => {
     res.status(404).json({ message: "Route not found" });

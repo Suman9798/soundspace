@@ -13,7 +13,7 @@ Soundspace is a small music-sharing web app built with Express, MongoDB, and Ima
 
 ## Requirements
 
-- Node.js 18 or newer and npm.
+- Node.js 20 or newer and npm.
 - MongoDB, either a local server or a MongoDB Atlas database.
 - An ImageKit account and private API key to upload tracks.
 
@@ -75,6 +75,29 @@ The server waits for MongoDB to connect before it begins listening. To use anoth
 | View albums | Own albums | Own albums |
 
 Albums are scoped to the account that created them. Listener accounts can create collections from the available catalog; artist accounts can create albums from tracks they uploaded.
+
+## Deploy to Vercel
+
+Vercel serves the files in `public/` and runs the Express API as a serverless function. MongoDB and ImageKit remain external services; configure their credentials in Vercel rather than committing them.
+
+1. Push this repository to GitHub, then sign in to [Vercel](https://vercel.com/) and choose **Add New → Project**.
+2. Import `Suman9798/soundspace`. Keep the detected/default build settings; this project does not need a separate build command or output directory.
+3. Add these environment variables under the project settings. Select Production, Preview, and Development as needed:
+
+   | Variable | Value |
+   |---|---|
+   | `MONGO_URI` | Your MongoDB Atlas connection string |
+   | `JWT_SECRET` | A long, random secret used to sign login tokens |
+   | `IMAGEKIT_PRIVATE_KEY` | Your ImageKit private key |
+
+   `PORT` is only used for local development. Vercel supplies the production runtime settings. Do not add `.env` to Git or paste secret values into source files.
+
+4. In MongoDB Atlas, allow connections from Vercel and use a database user with a strong password. Atlas may require `0.0.0.0/0` when using Vercel's changing outbound IPs; use a dedicated least-privilege database user and never expose the connection string publicly.
+5. Click **Deploy**. After it finishes, open the generated `.vercel.app` URL, register an account, and try the music and album pages. Artist uploads need the ImageKit private key configured.
+
+Vercel Functions currently accept request bodies up to 4.5 MB. Since this app sends audio through its API and the local upload limit is 25 MB, audio files above Vercel's request limit will fail with HTTP 413. Larger uploads need a direct browser-to-ImageKit upload flow.
+
+Each new push to the connected GitHub branch triggers a deployment. Configure the Vercel environment variables before the first deployment; changing them requires a new deployment to take effect.
 
 ## API reference
 
@@ -144,8 +167,8 @@ src/middlewares/        JWT cookie authentication and role checks
 src/models/             Mongoose user, music, and album models
 src/routes/             API route definitions
 src/services/           ImageKit upload integration
-src/app.js              Express middleware, API mounts, and static frontend
-src/server.js           Environment loading, database connection, and startup
+src/app.js              Express middleware, API mounts, and Vercel app export
+src/local-server.js     Environment loading, database connection, and local startup
 ```
 
 ## Troubleshooting
