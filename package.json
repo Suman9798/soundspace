@@ -1,7 +1,7 @@
 {
-  "name": "authentacation_project",
+  "name": "soundspace",
   "version": "1.0.0",
-  "description": "",
+  "description": "A small music sharing app built with Express, MongoDB, and ImageKit",
   "main": "index.js",
   "scripts": {
     "start": "node src/server.js",
