@@ -1,0 +1,15 @@
+# Local secrets and configuration
+.env
+.env.*
+!.env.example
+.aws
+
+# Dependencies and generated files
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+coverage/
+dist/
+build/
+.DS_Store
