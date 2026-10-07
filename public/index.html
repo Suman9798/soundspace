@@ -47,9 +47,12 @@
     <audio id="audio" preload="none"></audio>
   </footer>
 
+  <script id="googleIdentityScript" src="https://accounts.google.com/gsi/client" async defer></script>
   <div class="modal-backdrop hidden" id="authModal" role="dialog" aria-modal="true" aria-labelledby="authTitle">
     <section class="auth-card"><button class="modal-close" id="closeAuth" aria-label="Close">×</button><div class="auth-logo"><span class="brand-mark"><i></i><i></i><i></i></span></div><p class="eyebrow">WELCOME TO SOUNDSPACE</p><h2 id="authTitle">Music sounds better together.</h2><p class="auth-intro">Sign in to explore the collection, or create an artist space and share a track.</p>
       <div class="auth-tabs"><button class="auth-tab active" data-auth-mode="login">Log in</button><button class="auth-tab" data-auth-mode="register">Create account</button></div>
+      <div id="googleSignIn" class="google-signin"></div>
+      <p class="auth-divider">or use email and password</p>
       <form id="authForm" class="form-stack">
         <label class="register-only hidden" for="registerUsername">Username<input id="registerUsername" name="username" autocomplete="username" placeholder="How should we call you?"></label>
         <label class="register-only hidden" for="registerEmail">Email<input id="registerEmail" name="email" type="email" autocomplete="email" placeholder="you@example.com"></label>

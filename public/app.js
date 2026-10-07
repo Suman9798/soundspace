@@ -13,6 +13,13 @@ const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 const content = $("#content");
 const audio = $("#audio");
+const googleIdentityReady = new Promise((resolve) => {
+  const script = $("#googleIdentityScript");
+  if (window.google?.accounts?.id) return resolve();
+  script?.addEventListener("load", resolve, { once: true });
+  script?.addEventListener("error", resolve, { once: true });
+  setTimeout(resolve, 8000);
+});
 
 function escapeHTML(value = "") {
   return String(value).replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
@@ -223,6 +230,36 @@ async function handleAuthSubmit(event) {
   }
 }
 
+async function handleGoogleCredential(response) {
+  const message = $("#authMessage");
+  message.textContent = "Signing in with Google…";
+  try {
+    const data = await api("/api/auth/google", { method: "POST", body: JSON.stringify({ credential: response.credential }) });
+    state.user = data.user;
+    state.view = "home";
+    closeAuth();
+    setConnection(true);
+    await loadUserData();
+    render();
+    toast(`Welcome, ${state.user.username}.`);
+  } catch (error) {
+    message.textContent = error.message;
+  }
+}
+
+async function setupGoogleSignIn() {
+  try {
+    const { clientId } = await api("/api/auth/google/config");
+    if (!clientId) return;
+    await googleIdentityReady;
+    if (!window.google?.accounts?.id) return;
+    window.google.accounts.id.initialize({ client_id: clientId, callback: handleGoogleCredential });
+    window.google.accounts.id.renderButton($("#googleSignIn"), { theme: "filled_black", size: "large", shape: "rectangular", text: "continue_with", width: 320 });
+  } catch (error) {
+    // Google sign in remains unavailable if the provider script or config cannot load.
+  }
+}
+
 async function handleUpload(event) {
   event.preventDefault();
   const form = event.target;
@@ -341,6 +378,7 @@ document.addEventListener("keydown", (event) => { if (event.key === "Escape") cl
 
 async function init() {
   render();
+  setupGoogleSignIn();
   try {
     const result = await api("/api/auth/me");
     state.user = result.user;

@@ -89,11 +89,13 @@ Vercel serves the files in `public/` and runs the Express API as a serverless fu
    | `MONGO_URI` | Your MongoDB Atlas connection string |
    | `JWT_SECRET` | A long, random secret used to sign login tokens |
    | `IMAGEKIT_PRIVATE_KEY` | Your ImageKit private key |
+   | `GOOGLE_CLIENT_ID` | OAuth 2.0 Web client ID for Google Identity Services |
 
    `PORT` is only used for local development. Vercel supplies the production runtime settings. Do not add `.env` to Git or paste secret values into source files.
 
 4. In MongoDB Atlas, allow connections from Vercel and use a database user with a strong password. Atlas may require `0.0.0.0/0` when using Vercel's changing outbound IPs; use a dedicated least-privilege database user and never expose the connection string publicly.
-5. Click **Deploy**. After it finishes, open the generated `.vercel.app` URL, register an account, and try the music and album pages. Artist uploads need the ImageKit private key configured.
+5. In Google Cloud Console, configure the OAuth consent screen and create a Web application OAuth client. Add your local app origin (for example `http://localhost:3000`) and deployed app origin (for example `https://your-project.vercel.app`) as authorized JavaScript origins. Set its client ID as `GOOGLE_CLIENT_ID` in your local `.env` and Vercel settings. See [Google's client ID setup guide](https://developers.google.com/identity/gsi/web/guides/get-google-api-clientid).
+6. Click **Deploy**. After it finishes, open the generated `.vercel.app` URL, register an account or sign in with Google, and try the music and album pages. Artist uploads need the ImageKit private key configured.
 
 Vercel Functions currently accept request bodies up to 4.5 MB. Since this app sends audio through its API and the local upload limit is 25 MB, audio files above Vercel's request limit will fail with HTTP 413. Larger uploads need a direct browser-to-ImageKit upload flow.
 
@@ -109,6 +111,8 @@ The API uses a cookie named `token`. Register and login set the cookie; send it 
 |---|---|---|---|
 | `POST` | `/api/auth/register` | Public | Create a listener or artist account |
 | `POST` | `/api/auth/login` | Public | Sign in with email or username |
+| `POST` | `/api/auth/google` | Public | Verify a Google ID token and sign in (creates a listener account when needed) |
+| `GET` | `/api/auth/google/config` | Public | Return the configured Google web client ID |
 | `GET` | `/api/auth/me` | Signed in | Return the current account |
 | `POST` | `/api/auth/logout` | Public | Clear the login cookie |
 
