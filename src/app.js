@@ -10,6 +10,10 @@ const app = express();
 app.use(express.json({ limit: "1mb" }));
 app.use(cookieParser());
 
+// If Vercel routes the bare root to Express, send the browser to the static
+// homepage that Vercel serves from public/.
+app.get("/", (req, res) => res.redirect(302, "/index.html"));
+
 // Vercel starts the Express app without running src/server.js, so connect when
 // an API request arrives. The cached connection is reused across warm requests.
 app.use("/api", async (req, res, next) => {
