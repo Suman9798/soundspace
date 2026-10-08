@@ -55,7 +55,8 @@
       <p class="auth-divider">or use email and password</p>
       <form id="authForm" class="form-stack">
         <label class="register-only hidden" for="registerUsername">Username<input id="registerUsername" name="username" autocomplete="username" placeholder="How should we call you?"></label>
-        <label class="register-only hidden" for="registerEmail">Email<input id="registerEmail" name="email" type="email" autocomplete="email" placeholder="you@example.com"></label>
+        <div class="register-only hidden"><label for="registerEmail">Email<input id="registerEmail" name="email" type="email" autocomplete="email" placeholder="you@example.com"></label><button class="button button-outline otp-action" type="button" id="sendEmailOtp">Send email code</button></div>
+        <div class="register-only hidden"><label for="emailOtp">Email verification code<input id="emailOtp" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" placeholder="6-digit code"></label><button class="button button-outline otp-action" type="button" id="verifyEmailOtp">Verify email</button></div>
         <label class="login-only" for="loginIdentity">Email or username<input id="loginIdentity" name="identity" autocomplete="username" placeholder="you@example.com" required></label>
         <label for="authPassword">Password<input id="authPassword" name="password" type="password" minlength="8" autocomplete="current-password" placeholder="At least 8 characters" required></label>
         <label class="register-only hidden" for="accountRole">I’m joining as<select id="accountRole" name="role"><option value="user">A listener</option><option value="artist">An artist</option></select></label>

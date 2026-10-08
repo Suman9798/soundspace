@@ -15,3 +15,5 @@
   font: 600 16px var(--display);
 }
 .google-signin{display:flex;justify-content:center;margin:0 auto 10px;min-height:40px}.auth-divider{color:#858a80;font-size:10px;margin:0 0 12px}
+.otp-action{min-height:34px;padding:7px 12px;font-size:11px;justify-self:start}.auth-card .form-stack .otp-action{width:auto}.email-verified{color:#c6f36b!important}
+.auth-card .form-stack>div{display:grid;gap:7px}

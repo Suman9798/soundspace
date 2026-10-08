@@ -5,6 +5,8 @@ const state = {
   albums: [],
   recentUploads: [],
   authMode: "login",
+  emailVerificationToken: null,
+  verifiedEmail: null,
   currentAlbum: null,
   returnView: "home",
 };
@@ -211,8 +213,11 @@ async function handleAuthSubmit(event) {
   message.textContent = "";
   try {
     const register = state.authMode === "register";
+    if (register && (state.verifiedEmail !== String(values.get("email") || "").trim().toLowerCase() || !state.emailVerificationToken)) {
+      throw new Error("Verify your email address before creating your account");
+    }
     const payload = register
-      ? { username: values.get("username"), email: values.get("email"), password: values.get("password"), role: values.get("role") }
+      ? { username: values.get("username"), email: values.get("email"), password: values.get("password"), role: values.get("role"), emailVerificationToken: state.emailVerificationToken }
       : { username: values.get("identity"), password: values.get("password") };
     const data = await api(register ? "/api/auth/register" : "/api/auth/login", { method: "POST", body: JSON.stringify(payload) });
     state.user = data.user;
@@ -227,6 +232,55 @@ async function handleAuthSubmit(event) {
   } finally {
     submit.disabled = false;
     submit.textContent = state.authMode === "register" ? "Create account" : "Log in";
+  }
+}
+
+async function requestEmailOtp() {
+  const emailInput = $("#registerEmail");
+  if (!emailInput.reportValidity()) return;
+  const email = emailInput.value.trim().toLowerCase();
+  const button = $("#sendEmailOtp");
+  const message = $("#authMessage");
+  button.disabled = true;
+  button.textContent = "Sending…";
+  message.textContent = "";
+  state.emailVerificationToken = null;
+  state.verifiedEmail = null;
+  $("#verifyEmailOtp").classList.remove("email-verified");
+  try {
+    const result = await api("/api/auth/email-otp/send", { method: "POST", body: JSON.stringify({ email }) });
+    message.textContent = result.message;
+    $("#emailOtp").focus();
+  } catch (error) {
+    message.textContent = error.message;
+  } finally {
+    button.disabled = false;
+    button.textContent = "Send email code";
+  }
+}
+
+async function verifyEmailOtp() {
+  const email = $("#registerEmail").value.trim().toLowerCase();
+  const code = $("#emailOtp").value.trim();
+  const message = $("#authMessage");
+  const button = $("#verifyEmailOtp");
+  button.disabled = true;
+  button.textContent = "Checking…";
+  message.textContent = "";
+  try {
+    const result = await api("/api/auth/email-otp/verify", { method: "POST", body: JSON.stringify({ email, code }) });
+    state.emailVerificationToken = result.verificationToken;
+    state.verifiedEmail = email;
+    button.classList.add("email-verified");
+    message.textContent = "Email verified. You can create your account.";
+  } catch (error) {
+    state.emailVerificationToken = null;
+    state.verifiedEmail = null;
+    button.classList.remove("email-verified");
+    message.textContent = error.message;
+  } finally {
+    button.disabled = false;
+    button.textContent = state.verifiedEmail === email ? "Email verified ✓" : "Verify email";
   }
 }
 
@@ -339,6 +393,16 @@ $("#authButton").addEventListener("click", () => openAuth("login"));
 $("#closeAuth").addEventListener("click", closeAuth);
 $("#authModal").addEventListener("click", (event) => { if (event.target.id === "authModal") closeAuth(); });
 $("#authForm").addEventListener("submit", handleAuthSubmit);
+$("#sendEmailOtp").addEventListener("click", requestEmailOtp);
+$("#verifyEmailOtp").addEventListener("click", verifyEmailOtp);
+$("#registerEmail").addEventListener("input", (event) => {
+  if (event.target.value.trim().toLowerCase() !== state.verifiedEmail) {
+    state.emailVerificationToken = null;
+    state.verifiedEmail = null;
+    $("#verifyEmailOtp").classList.remove("email-verified");
+    $("#verifyEmailOtp").textContent = "Verify email";
+  }
+});
 $("#userMenu").addEventListener("click", async () => {
   try {
     await api("/api/auth/logout", { method: "POST" });
