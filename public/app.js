@@ -3,6 +3,10 @@ const state = {
   view: "home",
   tracks: [],
   albums: [],
+  playQueue: [],
+  playQueueArtist: "",
+  playIndex: -1,
+  activeTrackId: null,
   recentUploads: [],
   authMode: "login",
   emailVerificationToken: null,
@@ -92,13 +96,15 @@ function heroTemplate() {
 }
 
 function trackRows(tracks) {
+  state.playQueue = tracks;
+  state.playQueueArtist = state.currentAlbum?.artist?.username || "";
   if (!tracks.length) return `<div class="empty-state"><div class="empty-icon">♫</div><strong>No tracks just yet</strong><p>When artists share music, it will be waiting here for you.</p></div>`;
   return `<div class="track-list"><div class="track-head"><span>#</span><span>Title</span><span class="album-col">Artist</span><span class="track-duration">Play</span></div>${tracks.map((track, index) => `
-    <div class="track-row">
+    <div class="track-row${String(track._id || track.id) === String(state.activeTrackId) ? " is-playing" : ""}" data-track-id="${escapeHTML(track._id || track.id || "")}">
       <span class="track-number">${String(index + 1).padStart(2, "0")}</span>
       <div class="track-main"><div class="cover-art">♫</div><div class="track-name"><strong>${escapeHTML(track.title)}</strong><span>${escapeHTML(track.artist?.username || "Independent artist")}</span></div></div>
       <span class="track-album">${escapeHTML(track.artist?.username || "—")}</span>
-      <button class="track-play" data-play="${escapeHTML(track.uri)}" data-title="${escapeHTML(track.title)}" data-artist="${escapeHTML(track.artist?.username || "Independent artist")}" aria-label="Play ${escapeHTML(track.title)}">▶</button>
+      <button class="track-play" data-play-index="${index}" aria-label="Play ${escapeHTML(track.title)}">▶</button>
     </div>`).join("")}</div>`;
 }
 
@@ -125,7 +131,7 @@ function renderAlbums() {
 
 function renderAlbum(album) {
   const tracks = album.musics || [];
-  content.innerHTML = `<button class="back-link" data-view="albums">← Back to albums</button><section class="detail-hero"><div class="detail-art">♫</div><div class="detail-meta"><p class="eyebrow">ALBUM</p><h1>${escapeHTML(album.title)}</h1><p>${escapeHTML(album.artist?.username || "Independent artist")} · ${tracks.length} ${tracks.length === 1 ? "track" : "tracks"}</p><div class="detail-controls">${tracks.length ? `<button class="button button-primary" data-play="${escapeHTML(tracks[0].uri)}" data-title="${escapeHTML(tracks[0].title)}" data-artist="${escapeHTML(album.artist?.username || "Independent artist")}">▶ Play album</button>` : ""}</div></div></section><div class="section-heading"><div><h2>Tracklist</h2><p>Play any track in this album</p></div></div>${trackRows(tracks)}`;
+  content.innerHTML = `<button class="back-link" data-view="albums">← Back to albums</button><section class="detail-hero"><div class="detail-art">♫</div><div class="detail-meta"><p class="eyebrow">ALBUM</p><h1>${escapeHTML(album.title)}</h1><p>${escapeHTML(album.artist?.username || "Independent artist")} · ${tracks.length} ${tracks.length === 1 ? "track" : "tracks"}</p><div class="detail-controls">${tracks.length ? `<button class="button button-primary" data-play-album>▶ Play album</button>` : ""}</div></div></section><div class="section-heading"><div><h2>Tracklist</h2><p>Play any track in this album</p></div></div>${trackRows(tracks)}`;
 }
 
 function uploadStudio() {
@@ -188,13 +194,29 @@ function setAuthMode(mode) {
   $("#authForm [name=username]").required = mode === "register";
 }
 
-function playTrack(url, title, artist) {
+function playTrackAt(index) {
+  if (!state.playQueue.length) return toast("No tracks are available to play.");
+  const normalizedIndex = (index + state.playQueue.length) % state.playQueue.length;
+  const track = state.playQueue[normalizedIndex];
+  const url = track?.uri;
   if (!url) return toast("This track does not have a playable audio URL.");
+  state.playIndex = normalizedIndex;
+  state.activeTrackId = track._id || track.id || null;
   if (audio.src !== new URL(url, location.href).href) audio.src = url;
-  $("#playerTitle").textContent = title || "Unknown track";
-  $("#playerArtist").textContent = artist || "Independent artist";
+  $("#playerTitle").textContent = track.title || "Unknown track";
+  $("#playerArtist").textContent = track.artist?.username || state.playQueueArtist || "Independent artist";
   $("#playerArt").textContent = "♫";
+  $$(".track-row[data-track-id]").forEach((row) => row.classList.toggle("is-playing", row.dataset.trackId === String(state.activeTrackId)));
   audio.play().then(() => { $("#playToggle").textContent = "Ⅱ"; }).catch(() => toast("The audio could not be played. Check that the media URL is public."));
+}
+
+function playAdjacentTrack(direction) {
+  if (state.playIndex < 0 || !state.playQueue.length) return toast("Choose a track to start listening.");
+  if (direction < 0 && audio.currentTime > 3) {
+    audio.currentTime = 0;
+    return;
+  }
+  playTrackAt(state.playIndex + direction);
 }
 
 function formatTime(seconds) {
@@ -383,8 +405,14 @@ document.addEventListener("click", async (event) => {
   if (authOpener) return openAuth(authOpener.dataset.openAuth);
   const authMode = event.target.closest("[data-auth-mode]");
   if (authMode) return setAuthMode(authMode.dataset.authMode);
-  const play = event.target.closest("[data-play]");
-  if (play) return playTrack(play.dataset.play, play.dataset.title, play.dataset.artist);
+  const play = event.target.closest("[data-play-index]");
+  if (play) return playTrackAt(Number(play.dataset.playIndex));
+  const playAlbum = event.target.closest("[data-play-album]");
+  if (playAlbum && state.currentAlbum?.musics?.length) {
+    state.playQueue = state.currentAlbum.musics;
+    state.playQueueArtist = state.currentAlbum.artist?.username || "";
+    return playTrackAt(0);
+  }
   const album = event.target.closest("[data-album]");
   if (album) return openAlbum(album.dataset.album);
 });
@@ -427,14 +455,27 @@ $("#playToggle").addEventListener("click", () => {
   if (audio.paused) audio.play().then(() => { $("#playToggle").textContent = "Ⅱ"; }).catch(() => toast("The audio could not be played."));
   else { audio.pause(); $("#playToggle").textContent = "▶"; }
 });
+$("#previousTrack").addEventListener("click", () => playAdjacentTrack(-1));
+$("#nextTrack").addEventListener("click", () => playAdjacentTrack(1));
 audio.addEventListener("play", () => { $("#playToggle").textContent = "Ⅱ"; });
 audio.addEventListener("pause", () => { $("#playToggle").textContent = "▶"; });
+audio.addEventListener("ended", () => {
+  if (state.playQueue.length > 1) playTrackAt(state.playIndex + 1);
+  else $("#playToggle").textContent = "▶";
+});
 audio.addEventListener("timeupdate", () => {
   $("#currentTime").textContent = formatTime(audio.currentTime);
-  $("#seekBar").value = audio.duration ? (audio.currentTime / audio.duration) * 100 : 0;
+  const progress = audio.duration ? (audio.currentTime / audio.duration) * 100 : 0;
+  $("#seekBar").value = progress;
+  $("#seekBar").style.setProperty("--seek-progress", `${progress}%`);
 });
 audio.addEventListener("loadedmetadata", () => { $("#duration").textContent = formatTime(audio.duration); });
-$("#seekBar").addEventListener("input", (event) => { if (audio.duration) audio.currentTime = (Number(event.target.value) / 100) * audio.duration; });
+$("#seekBar").addEventListener("input", (event) => {
+  if (!Number.isFinite(audio.duration) || !audio.duration) return;
+  audio.currentTime = (Number(event.target.value) / 100) * audio.duration;
+  event.target.style.setProperty("--seek-progress", `${event.target.value}%`);
+  $("#currentTime").textContent = formatTime(audio.currentTime);
+});
 $("#volume").addEventListener("input", (event) => { audio.volume = Number(event.target.value) / 100; });
 $("#backButton").addEventListener("click", () => { state.currentAlbum = null; state.view = state.returnView || "home"; render(); });
 $("#forwardButton").addEventListener("click", () => toast("Choose an album or section to continue."));
